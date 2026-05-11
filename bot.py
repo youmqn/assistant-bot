@@ -670,6 +670,7 @@ async def main():
         logger.error("TELEGRAM_TOKEN не задан!")
         return
 
+    logger.info(f"Запуск бота... PORT={PORT}")
     load_chat_id()
 
     app = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -687,16 +688,14 @@ async def main():
     await app.initialize()
     await app.start()
 
-    # Webhook
-    webhook_url = f"https://{WEBHOOK_HOST}/webhook"
-    await app.bot.set_webhook(webhook_url, drop_pending_updates=True)
-    logger.info(f"Webhook: {webhook_url}")
-
-    # aiohttp сервер
+    # aiohttp сервер — запускаем ПЕРВЫМ чтобы Railway увидел порт
     async def handle_webhook(request):
-        data = await request.json()
-        update = Update.de_json(data, app.bot)
-        await app.process_update(update)
+        try:
+            data = await request.json()
+            update = Update.de_json(data, app.bot)
+            await app.process_update(update)
+        except Exception as e:
+            logger.error(f"Webhook error: {e}")
         return web.Response(text="ok")
 
     async def handle_health(request):
@@ -710,12 +709,17 @@ async def main():
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
-    logger.info(f"Сервер на порту {PORT}")
+    logger.info(f"HTTP сервер запущен на порту {PORT}")
+
+    # Webhook — устанавливаем ПОСЛЕ запуска сервера
+    webhook_url = f"https://{WEBHOOK_HOST}/webhook"
+    await app.bot.set_webhook(webhook_url, drop_pending_updates=True)
+    logger.info(f"Webhook установлен: {webhook_url}")
 
     # Фоновый мониторинг
     asyncio.ensure_future(news_monitor(app))
 
-    logger.info("Бот запущен! (webhook + мониторинг)")
+    logger.info("Бот полностью запущен! (webhook + мониторинг)")
 
     while True:
         await asyncio.sleep(3600)
