@@ -315,7 +315,11 @@ def analyze_news_for_trading(news_item, prices, budget):
 
 💡 *Объяснение:* [2-3 предложения почему и почему именно это время для входа]
 
-Если новость незначительная или не влияет на рынок — рекомендуй SKIP и объясни почему.
+📚 *Урок:* [Объясни ОДИН трейдинг-концепт который применим к этой ситуации. Например: что такое stop loss и зачем он нужен, как работает поддержка/сопротивление, что такое фьючерсы, что значит LONG/SHORT, зачем ставить take profit, как новости двигают рынок, что такое ликвидность, волатильность, и т.д. Каждый раз объясняй РАЗНЫЙ концепт. Объясняй простым языком как для новичка, 2-3 предложения.]
+
+⚠️ *Риск:* [Кратко опиши главный риск этой конкретной сделки — что может пойти не так. 1 предложение.]
+
+Если новость незначительная или не влияет на рынок — рекомендуй SKIP и объясни почему. Урок всё равно добавь.
 ВСЁ ВРЕМЯ УКАЗЫВАЙ ПО МОСКВЕ (МСК).
 Отвечай на русском."""
 
@@ -365,6 +369,77 @@ def get_bybit_link(symbol, direction):
     return f"https://www.bybit.com/trade/usdt/{pair}"
 
 # ========================
+# ОБУЧЕНИЕ — УРОКИ ТРЕЙДИНГА
+# ========================
+TRADING_LESSONS = [
+    {
+        "topic": "Что такое LONG и SHORT",
+        "lesson": "LONG — это покупка актива в надежде что цена вырастет. Ты покупаешь дёшево, продаёшь дорого. SHORT — наоборот, ты \"продаёшь\" актив которого у тебя нет, надеясь что цена упадёт, и потом откупаешь дешевле. На фьючерсах можно шортить без реального владения активом.",
+        "example": "BTC стоит $100k. Если думаешь что вырастет — открываешь LONG. Цена выросла до $102k — ты заработал 2%. Если думаешь что упадёт — открываешь SHORT. Цена упала до $98k — ты тоже заработал 2%."
+    },
+    {
+        "topic": "Stop Loss — защита от потерь",
+        "lesson": "Stop Loss (SL) — автоматический ордер который закрывает твою позицию при достижении определённого убытка. Это САМЫЙ важный инструмент трейдера. Без SL одна плохая сделка может уничтожить весь депозит.",
+        "example": "Ты купил ETH по $3000. Ставишь SL на $2940 (-2%). Если цена упадёт — позиция закроется автоматически, и ты потеряешь только $60, а не весь депозит."
+    },
+    {
+        "topic": "Take Profit — фиксация прибыли",
+        "lesson": "Take Profit (TP) — ордер который автоматически закрывает позицию когда цена достигает цели. Жадность — враг трейдера. Лучше забрать +3% прибыли, чем ждать +10% и получить -5%.",
+        "example": "Купил SOL по $170, TP на $175 (+3%). Цена дошла до $175 — позиция закрылась, прибыль в кармане. Даже если потом SOL вырос до $180 — ты не проиграл, ты заработал."
+    },
+    {
+        "topic": "Risk Management — управление рисками",
+        "lesson": "Никогда не рискуй больше 1-3% депозита на одну сделку. При депозите $100 — это $1-3 на сделку. Кажется мало, но это защищает от серии убытков. 10 убыточных сделок подряд — потеряешь 10-30%, а не всё.",
+        "example": "Депозит $100, риск 2% = $2 на сделку. Если SL сработает — теряешь $2. Даже 5 убытков подряд = -$10. Депозит всё ещё $90 и ты можешь торговать дальше."
+    },
+    {
+        "topic": "Что такое фьючерсы и плечо",
+        "lesson": "Фьючерсы позволяют торговать с плечом (leverage). Плечо x10 значит что с $10 ты управляешь позицией на $100. Прибыль умножается на 10, но и убыток тоже! При плече x10 движение цены на -10% = ликвидация (потеря всего).",
+        "example": "У тебя $50, плечо x10 = позиция $500. BTC вырос на +1% — ты заработал +10% ($5). Но если упал на -1% — ты потерял $5. При -10% — полная ликвидация. НОВИЧКАМ плечо выше x3-x5 НЕ рекомендуется."
+    },
+    {
+        "topic": "Поддержка и сопротивление",
+        "lesson": "Уровень поддержки — цена от которой актив обычно отскакивает вверх (покупатели). Уровень сопротивления — цена от которой актив обычно отскакивает вниз (продавцы). Эти уровни помогают определить точки входа и выхода.",
+        "example": "BTC несколько раз отскакивал от $95k (поддержка) и не мог пробить $105k (сопротивление). Покупать у поддержки, продавать у сопротивления — базовая стратегия."
+    },
+    {
+        "topic": "Волатильность — друг и враг",
+        "lesson": "Волатильность — это размах колебаний цены. Высокая волатильность = большие движения = больше возможностей, но и больше рисков. Крипта — один из самых волатильных рынков. BTC может двигаться на 5-10% за день.",
+        "example": "Низкая волатильность: цена ходит ±0.5% в день — скучно, мало заработаешь. Высокая: ±5% в день — можно заработать, но и потерять. В новостные дни волатильность взлетает."
+    },
+    {
+        "topic": "Ликвидность — почему она важна",
+        "lesson": "Ликвидность — это сколько денег крутится в торговле активом. Высокая ликвидность (BTC, ETH) = легко купить и продать по хорошей цене. Низкая ликвидность (мелкие альткоины) = большой спред, проскальзывание, можешь не продать когда нужно.",
+        "example": "BTC: покупаешь на $100 — получаешь ровно по рыночной цене. Мелкий токен: покупаешь на $100 — цена сдвигается от твоей же покупки. Новичкам лучше торговать только топ-10 монет."
+    },
+    {
+        "topic": "Психология трейдинга",
+        "lesson": "Эмоции — главный враг трейдера. FOMO (страх упустить) заставляет покупать на пике. Паника заставляет продавать на дне. Месть рынку — открывать сделки чтобы отыграться. Решение: торговый план + дисциплина + стоп-лоссы.",
+        "example": "BTC вырос на +15% за день. FOMO кричит 'ПОКУПАЙ!'. Ты покупаешь на пике. Цена откатывается на -8%. Паника: 'ПРОДАВАЙ!'. Итог: -8%. Если бы следовал плану — не вошёл бы на пике."
+    },
+    {
+        "topic": "Что такое ордера: Market и Limit",
+        "lesson": "Market ордер — покупка/продажа ПРЯМО СЕЙЧАС по текущей цене. Быстро, но цена может быть чуть хуже. Limit ордер — ты указываешь СВОЮ цену. Ордер исполнится только когда рынок дойдёт до неё. Дешевле, но может не исполниться.",
+        "example": "BTC стоит $100k. Market buy — купишь за ~$100,010 (чуть дороже). Limit buy $99,500 — купишь только если цена упадёт до $99,500. Экономия $500, но может и не дойти."
+    },
+    {
+        "topic": "Диверсификация портфеля",
+        "lesson": "Не клади все яйца в одну корзину. Если весь депозит в одной монете и она упадёт — потеряешь всё. Распредели между 3-5 активами. Даже если один упадёт, остальные могут вырасти.",
+        "example": "Депозит $100: $40 BTC + $30 ETH + $20 SOL + $10 на сделки. BTC упал на -5% = потерял $2. Но ETH вырос на +3% = заработал $0.90. Общий убыток меньше."
+    },
+    {
+        "topic": "Тренды: как определить направление рынка",
+        "lesson": "Восходящий тренд — цена делает всё более высокие максимумы и минимумы. Нисходящий — всё более низкие. Боковик (флэт) — цена ходит в диапазоне. Торговать ПО тренду проще и прибыльнее чем против.",
+        "example": "BTC: $95k → $98k → $97k → $101k → $99k → $103k — восходящий тренд (каждый откат выше предыдущего). В тренде вверх лучше искать LONG, а не SHORT."
+    }
+]
+
+def get_lesson_for_trading(budget):
+    """Выбирает урок на основе количества сделок (прогрессия)."""
+    lesson_index = budget["total_trades"] % len(TRADING_LESSONS)
+    return TRADING_LESSONS[lesson_index]
+
+# ========================
 # TELEGRAM ОБРАБОТЧИКИ
 # ========================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -376,6 +451,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("📊 Рынок сейчас", callback_data="market")],
         [InlineKeyboardButton("💰 Мой бюджет", callback_data="budget")],
         [InlineKeyboardButton("🔍 Проверить новости", callback_data="check_news")],
+        [InlineKeyboardButton("📚 Урок трейдинга", callback_data="learn")],
         [InlineKeyboardButton("⚙️ Настроить бюджет", callback_data="setup_budget")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -385,7 +461,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📰 Мониторю крипто-новости каждые 5 минут\n"
         "🧠 AI анализирует влияние на рынок\n"
         "💰 Рассчитываю размер позиции по risk management\n"
-        "🔗 Даю готовые ссылки на Bybit\n\n"
+        "🔗 Даю готовые ссылки на Bybit\n"
+        "📚 Обучаю трейдингу с каждой рекомендацией\n\n"
         f"💼 Текущий баланс: *${budget['current_balance']:.2f}*\n\n"
         "📋 *Команды:*\n"
         "/market — цены и рынок\n"
@@ -394,7 +471,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/trade WIN 5.50 — записать прибыльную сделку\n"
         "/trade LOSS 3.20 — записать убыточную сделку\n"
         "/check — проверить новости сейчас\n"
-        "/stats — статистика торговли",
+        "/stats — статистика торговли\n"
+        "/learn — урок трейдинга\n"
+        "/glossary — словарь терминов",
         parse_mode="Markdown",
         reply_markup=reply_markup
     )
@@ -573,6 +652,67 @@ async def check_news_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     save_seen_news()
 
+async def learn_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Урок трейдинга — следующий по прогрессии или по номеру."""
+    budget = load_budget()
+
+    # Можно указать номер урока: /learn 3
+    if context.args:
+        try:
+            num = int(context.args[0]) - 1
+            if 0 <= num < len(TRADING_LESSONS):
+                lesson = TRADING_LESSONS[num]
+            else:
+                await update.message.reply_text(f"❌ Уроков: {len(TRADING_LESSONS)}. Пример: /learn 1")
+                return
+        except:
+            await update.message.reply_text("Пример: /learn или /learn 3")
+            return
+    else:
+        lesson = get_lesson_for_trading(budget)
+
+    lesson_num = TRADING_LESSONS.index(lesson) + 1
+    text = (
+        f"📚 *Урок {lesson_num}/{len(TRADING_LESSONS)}: {lesson['topic']}*\n\n"
+        f"📖 {lesson['lesson']}\n\n"
+        f"💡 *Пример:* {lesson['example']}\n\n"
+        f"➡️ Следующий урок: /learn {lesson_num % len(TRADING_LESSONS) + 1}\n"
+        f"📋 Все уроки: /learn 1 ... /learn {len(TRADING_LESSONS)}"
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+async def glossary_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Словарь трейдинг-терминов."""
+    text = (
+        "📖 *Словарь трейдера*\n\n"
+        "*LONG* — покупка (ставка на рост)\n"
+        "*SHORT* — продажа (ставка на падение)\n"
+        "*Stop Loss (SL)* — авто-закрытие при убытке\n"
+        "*Take Profit (TP)* — авто-закрытие при прибыли\n"
+        "*Leverage (плечо)* — торговля заёмными средствами\n"
+        "*Ликвидация* — принудительное закрытие позиции\n"
+        "*FOMO* — страх упустить возможность\n"
+        "*FUD* — страх, неуверенность, сомнение\n"
+        "*Bull (бык)* — рост рынка\n"
+        "*Bear (медведь)* — падение рынка\n"
+        "*ATH* — исторический максимум цены\n"
+        "*Altcoin* — любая крипта кроме BTC\n"
+        "*Спред* — разница между ценой покупки и продажи\n"
+        "*Волатильность* — амплитуда колебаний цены\n"
+        "*Поддержка* — уровень от которого цена отскакивает вверх\n"
+        "*Сопротивление* — уровень от которого цена отскакивает вниз\n"
+        "*Market order* — покупка/продажа по рыночной цене\n"
+        "*Limit order* — ордер по указанной тобой цене\n"
+        "*PnL* — Profit and Loss (прибыль/убыток)\n"
+        "*ROI* — Return on Investment (возврат на вложение)\n"
+        "*Винрейт* — % прибыльных сделок от общего числа\n"
+        "*Risk/Reward (R:R)* — соотношение риска к прибыли\n"
+        "*DCA* — Dollar Cost Averaging (покупка частями)\n"
+        "*Whale (кит)* — крупный игрок на рынке\n\n"
+        "📚 Подробнее: /learn"
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -622,6 +762,19 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except:
                     await query.message.reply_text(text, disable_web_page_preview=True)
         save_seen_news()
+
+    elif query.data == "learn":
+        await query.edit_message_reply_markup(reply_markup=None)
+        budget = load_budget()
+        lesson = get_lesson_for_trading(budget)
+        lesson_num = TRADING_LESSONS.index(lesson) + 1
+        text = (
+            f"📚 *Урок {lesson_num}/{len(TRADING_LESSONS)}: {lesson['topic']}*\n\n"
+            f"📖 {lesson['lesson']}\n\n"
+            f"💡 *Пример:* {lesson['example']}\n\n"
+            f"➡️ Следующий: /learn {lesson_num % len(TRADING_LESSONS) + 1}"
+        )
+        await query.message.reply_text(text, parse_mode="Markdown")
 
     elif query.data == "setup_budget":
         await query.edit_message_reply_markup(reply_markup=None)
@@ -717,6 +870,8 @@ async def main():
     app.add_handler(CommandHandler("trade", trade_command))
     app.add_handler(CommandHandler("stats", stats_command))
     app.add_handler(CommandHandler("check", check_news_command))
+    app.add_handler(CommandHandler("learn", learn_command))
+    app.add_handler(CommandHandler("glossary", glossary_command))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
