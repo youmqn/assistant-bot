@@ -57,8 +57,11 @@ def load_chat_id():
 def save_chat_id(chat_id):
     global USER_CHAT_ID
     USER_CHAT_ID = chat_id
-    with open(USER_CHAT_ID_FILE, "w") as f:
-        f.write(str(chat_id))
+    try:
+        with open(USER_CHAT_ID_FILE, "w") as f:
+            f.write(str(chat_id))
+    except Exception as e:
+        logger.warning(f"Не удалось сохранить chat_id в файл: {e}")
 
 # ========================
 # КУРС ВАЛЮТ
