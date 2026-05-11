@@ -3,3 +3,4 @@ requests
 pytz
 openai
 aiohttp
+python-dateutil

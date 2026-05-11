@@ -140,6 +140,24 @@ def is_new_news(title):
     return True
 
 # ========================
+# ВРЕМЯ — КОНВЕРТАЦИЯ В МСК
+# ========================
+def format_time_moscow(time_str):
+    """Конвертирует ISO время в московское."""
+    if not time_str:
+        return datetime.now(MOSCOW_TZ).strftime("%d.%m.%Y %H:%M МСК")
+    try:
+        from dateutil import parser as dateparser
+        dt = dateparser.parse(time_str)
+        if dt.tzinfo is None:
+            import pytz as _pytz
+            dt = _pytz.utc.localize(dt)
+        dt_msk = dt.astimezone(MOSCOW_TZ)
+        return dt_msk.strftime("%d.%m.%Y %H:%M МСК")
+    except:
+        return datetime.now(MOSCOW_TZ).strftime("%d.%m.%Y %H:%M МСК")
+
+# ========================
 # ПОЛУЧЕНИЕ КРИПТО-НОВОСТЕЙ
 # ========================
 def get_crypto_news():
@@ -157,12 +175,15 @@ def get_crypto_news():
                 title = post.get("title", "")
                 url_link = post.get("url", "")
                 source = post.get("source", {}).get("title", "")
+                published = post.get("published_at", "")
+                pub_msk = format_time_moscow(published)
                 if title and is_new_news(title):
                     all_news.append({
                         "title": title,
                         "url": url_link,
                         "source": source,
-                        "type": "crypto"
+                        "type": "crypto",
+                        "published_at": pub_msk
                     })
     except Exception as e:
         logger.error(f"Ошибка CryptoPanic: {e}")
@@ -184,12 +205,15 @@ def get_crypto_news():
                 title = article.get("title", "")
                 url_link = article.get("url", "")
                 source = article.get("source", {}).get("name", "")
+                published = article.get("publishedAt", "")
+                pub_msk = format_time_moscow(published)
                 if title and "[Removed]" not in title and is_new_news(title):
                     all_news.append({
                         "title": title,
                         "url": url_link,
                         "source": source,
-                        "type": "finance"
+                        "type": "finance",
+                        "published_at": pub_msk
                     })
     except Exception as e:
         logger.error(f"Ошибка NewsAPI: {e}")
@@ -243,11 +267,15 @@ def analyze_news_for_trading(news_item, prices, budget):
         ])
 
         trade_amount = round(budget["current_balance"] * budget["risk_per_trade"], 2)
+        now_msk = datetime.now(MOSCOW_TZ).strftime("%d.%m.%Y %H:%M МСК")
+        published_at = news_item.get("published_at", now_msk)
 
         prompt = f"""Ты профессиональный крипто-трейдер и аналитик. Проанализируй новость и дай торговую рекомендацию.
 
 НОВОСТЬ: {news_item['title']}
 ИСТОЧНИК: {news_item.get('source', 'N/A')}
+ВРЕМЯ ПУБЛИКАЦИИ: {published_at}
+ТЕКУЩЕЕ ВРЕМЯ: {now_msk}
 
 ТЕКУЩИЕ ЦЕНЫ:
 {prices_text}
@@ -268,10 +296,14 @@ def analyze_news_for_trading(news_item, prices, budget):
    - Примерный Take Profit (%)
    - Примерный Stop Loss (%)
    - Уверенность (1-10)
+5. ОБЯЗАТЕЛЬНО укажи рекомендованное время для входа в сделку (по МСК)
+   - Если нужно действовать немедленно — напиши "сейчас"
+   - Если лучше подождать — укажи конкретное время (например "сегодня в 21:00 МСК" или "завтра в 10:00 МСК")
 
 ФОРМАТ ОТВЕТА (строго):
 📊 *Анализ новости*
 
+🕐 Опубликовано: {published_at}
 🔥 Важность: X/10
 💰 Актив: [SYMBOL]
 📈 Рекомендация: [LONG/SHORT/SKIP]
@@ -279,10 +311,12 @@ def analyze_news_for_trading(news_item, prices, budget):
 🎯 Take Profit: +X%
 🛑 Stop Loss: -X%
 📊 Уверенность: X/10
+⏰ Лучшее время для входа: [время по МСК]
 
-💡 *Объяснение:* [2-3 предложения почему]
+💡 *Объяснение:* [2-3 предложения почему и почему именно это время для входа]
 
 Если новость незначительная или не влияет на рынок — рекомендуй SKIP и объясни почему.
+ВСЁ ВРЕМЯ УКАЗЫВАЙ ПО МОСКВЕ (МСК).
 Отвечай на русском."""
 
         response = client.chat.completions.create(
@@ -524,8 +558,8 @@ async def check_news_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     for item in news[:3]:  # Макс 3 новости за раз
         analysis = analyze_news_for_trading(item, prices, budget)
         if analysis:
-            # Добавляем ссылки
             text = f"📰 *{item['title']}*\n"
+            text += f"🕐 Опубликовано: {item.get('published_at', 'N/A')}\n"
             text += f"🔗 [Источник]({item['url']})\n\n"
             text += analysis + "\n\n"
             text += f"🔗 [Открыть Bybit (BTC)](https://www.bybit.com/trade/usdt/BTCUSDT) | "
@@ -632,6 +666,7 @@ async def news_monitor(app):
                         if analysis and "SKIP" not in analysis.upper():
                             text = f"🚨 *НОВАЯ НОВОСТЬ*\n\n"
                             text += f"📰 *{item['title']}*\n"
+                            text += f"🕐 Опубликовано: {item.get('published_at', 'N/A')}\n"
                             text += f"🔗 [Источник]({item['url']})\n\n"
                             text += analysis + "\n\n"
                             text += f"🔗 [BTC](https://www.bybit.com/trade/usdt/BTCUSDT) | "
