@@ -7,6 +7,7 @@ import pytz
 from openai import OpenAI
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+from aiohttp import web
 
 # ========================
 # НАСТРОЙКИ
@@ -16,7 +17,8 @@ NEWS_API_KEY = os.environ.get("NEWS_API_KEY", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 MOSCOW_TZ = pytz.timezone("Europe/Moscow")
 SEND_TIME = "07:00"  # Время отправки сводки по Москве
-
+PORT = int(os.environ.get("PORT", 8080))
+WEBHOOK_HOST = "worker-production-f7e9.up.railway.app"
 
 # ID пользователя — заполняется автоматически при первом /start
 USER_CHAT_ID = None
@@ -286,20 +288,12 @@ async def scheduler_job(app):
 # ========================
 # ЗАПУСК
 # ========================
-def main():
+async def main():
     if not TELEGRAM_TOKEN:
         logger.error("TELEGRAM_TOKEN не задан! Установите переменную окружения.")
         return
 
     load_chat_id()
-
-    # Удаляем webhook если был установлен ранее
-    import requests as req
-    try:
-        req.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/deleteWebhook?drop_pending_updates=true", timeout=10)
-        logger.info("Webhook удалён, переключаемся на polling")
-    except:
-        pass
 
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
@@ -308,11 +302,42 @@ def main():
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Запускаем планировщик как asyncio задачу
-    app.post_init = lambda a: asyncio.ensure_future(scheduler_job(a))
+    await app.initialize()
+    await app.start()
 
-    logger.info("Бот запущен! (polling mode)")
-    app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
+    # Устанавливаем webhook
+    webhook_url = f"https://{WEBHOOK_HOST}/webhook"
+    await app.bot.set_webhook(webhook_url, drop_pending_updates=True)
+    logger.info(f"Webhook установлен: {webhook_url}")
+
+    # aiohttp сервер для приёма webhook
+    async def handle_webhook(request):
+        data = await request.json()
+        update = Update.de_json(data, app.bot)
+        await app.process_update(update)
+        return web.Response(text="ok")
+
+    async def handle_health(request):
+        return web.Response(text="ok")
+
+    aiohttp_app = web.Application()
+    aiohttp_app.router.add_post("/webhook", handle_webhook)
+    aiohttp_app.router.add_get("/", handle_health)
+
+    runner = web.AppRunner(aiohttp_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
+    logger.info(f"Сервер запущен на порту {PORT}")
+
+    # Запускаем планировщик
+    asyncio.ensure_future(scheduler_job(app))
+
+    logger.info("Бот запущен! (webhook mode)")
+
+    # Держим процесс живым
+    while True:
+        await asyncio.sleep(3600)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
